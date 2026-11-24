@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Object Detection · AI Lab Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="vendor/chart.umd.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>Object Detection</h1>
+  <p class="lead">A self-driving car has to see what is on the road. This project trains two AI models to find
+    vehicles, people, bicycles, traffic lights, signs, potholes and other obstacles in road photos.
+    Try them below, then see which model did better and why.</p>
+  <figure class="sample" id="sample">
+    <video src="sample.mp4" autoplay muted loop playsinline preload="auto"></video>
+    <figcaption>Sample: the improved version marking every object it finds in road footage.</figcaption>
+  </figure>
+</header>
+
+<main>
+  <!-- TRY IT -->
+  <section id="try">
+    <h2>Try it</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="label">1. What do you want to check?</div>
+        <div class="seg" id="source">
+          <button data-v="image" class="on">A photo</button><button data-v="video">A video</button><button data-v="camera">My camera</button>
+        </div>
+      </div>
+      <div class="step">
+        <div class="label">2. Which model?</div>
+        <div class="seg" id="model">
+          <button data-v="model1">First version</button><button data-v="model2">Improved version</button><button data-v="both" class="on">Compare both</button>
+        </div>
+      </div>
+    </div>
+
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="image/*,video/*" hidden>
+      <span>Drag a road photo or video here, or <u>click to choose one</u></span>
+    </label>
+    <div class="examples" id="examples">
+      <span>No photo? Try one of ours:</span>
+      <button data-src="examples/road01.jpg"><img src="examples/road01.jpg" alt="Road photo 1"></button>
+      <button data-src="examples/road05.jpg"><img src="examples/road05.jpg" alt="Road photo 2"></button>
+      <button data-src="examples/road11.jpg"><img src="examples/road11.jpg" alt="Road photo 3"></button>
+      <button data-src="examples/road14.jpg"><img src="examples/road14.jpg" alt="Road photo 4"></button>
+    </div>
+    <p class="note" id="note"></p>
+    <div class="stages" id="stages"></div>
+    <div class="diff" id="diff" hidden></div>
+    <video id="video" playsinline muted hidden></video>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results">
+    <h2>Results</h2>
+    <p class="flag" id="demo-flag" hidden>These are demo numbers, not real results yet.</p>
+    <p class="muted" id="no-results" hidden>The results will appear here after both models are trained.</p>
+
+    <div id="results-body">
+      <p class="muted">Both models were tested on the same set of 3,691 road photos that they never saw during training.</p>
+      <div class="headline" id="headline"></div>
+
+      <h3>How well each model finds each kind of object</h3>
+      <div class="chart tall"><canvas id="c-class"></canvas></div>
+
+      <h3>What we changed to make the improved version</h3>
+      <table id="changes"></table>
+
+      <h3>Why rare objects were hard</h3>
+      <p class="muted">The training photos have 166,390 vehicles but only 518 traffic lights, so the first version
+        hardly learned the rare objects. The improved version shows the photos with rare objects more often.</p>
+      <div class="chart"><canvas id="c-rfs"></canvas></div>
+
+      <h3>How accuracy grew during training</h3>
+      <div class="chart"><canvas id="c-epoch"></canvas></div>
+
+      <details>
+        <summary>Technical details</summary>
+        <table id="metrics"></table>
+        <div id="plots-wrap">
+          <div class="seg small" id="plots-seg"><button data-v="model1" class="on">First version</button><button data-v="model2">Improved version</button></div>
+          <div class="plots" id="plots"></div>
+        </div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer id="footer"></footer>
+<script src="ort/ort.wasm.min.js"></script>
+<script src="infer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
