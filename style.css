@@ -92,9 +92,14 @@ input[type=range] { width: 100%; max-width: 320px; accent-color: var(--ink); mar
 .stage canvas { display: block; width: 100%; height: auto; background: var(--soft); }
 .stage .meta { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0 2px; }
 .stage .meta b { font-weight: 600; }
-.stage .meta span { color: var(--grey); font-size: 14px; }
+.stage .meta span { color: var(--grey); font-size: 14px; white-space: nowrap; }
+/* phones: the count always sits on its own line under the model name, so the height never changes */
+@media (max-width: 560px) { .stage .meta { flex-direction: column; gap: 2px; } }
 .stage .counts { font-size: 14px; color: var(--grey); }
 .stage.busy canvas { opacity: .6; }
+/* video: the object list keeps a fixed two-line height, so the picture below it does not move up and down */
+.stages.playing .counts { line-height: 1.5; height: 3em; overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .examples { margin: 14px 0 0; font-size: 14px; color: var(--grey); }
 .examples .ex-title { margin: 0 0 8px; }
 .ex-row { display: grid; grid-template-columns: 64px repeat(4, minmax(0, 120px)); gap: 10px; align-items: center; margin-bottom: 10px; }
@@ -114,6 +119,8 @@ input[type=range] { width: 100%; max-width: 320px; accent-color: var(--ink); mar
 }
 @media (prefers-reduced-motion: reduce) { .examples img { transition: none; } }
 .diff { border: 1px solid var(--ink); padding: 20px 24px; margin: 32px 0 0; }
+.diff .vs { font-size: 14px; color: var(--grey); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.diff .vs b { color: var(--ink); font-weight: 600; }
 .diff .big { font-size: 28px; font-weight: 600; line-height: 1.2; }
 .diff .sub { color: var(--grey); font-size: 14px; margin: 6px 0 16px; }
 .diff table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -211,9 +218,23 @@ h1 .tag { color: var(--grey); font-weight: 400; white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) { .progress .bar i { transition: none; } }
 
-/* each model's picture carries its name in the corner; the improved one gets a white frame */
-.stage .pic { position: relative; }
-.stage .pic .tag { position: absolute; top: 8px; left: 8px; padding: 3px 10px; background: #000; color: #fff;
-  font-size: 13px; font-weight: 500; border: 1px solid #fff; pointer-events: none; }
+/* each model's picture carries its name just above it (never on top of the boxes); the improved one gets a white frame */
+.stage .pic { display: flex; flex-direction: column; align-items: flex-start; }
+.stage .pic canvas { align-self: stretch; }
+.stage .pic .tag { order: -1; margin-bottom: 6px; padding: 3px 10px; background: #000; color: #fff;
+  font-size: 13px; font-weight: 500; border: 1px solid #fff; }
 .stages.two .stage.best canvas { outline: 2px solid var(--ink); outline-offset: -2px; }
 .stage:only-child .pic .tag { display: none; }
+/* compare mode: the name sits only on the label above each picture (not again underneath) */
+.stages.two .stage .meta b { display: none; }
+/* one line under each picture: what was found on the left, how many and how fast on the right */
+.stages.two .stage { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; }
+.stages.two .stage .pic { flex: 0 0 100%; }
+.stages.two .stage .counts { order: 1; flex: 1 1 0; min-width: 0; padding-top: 10px; }
+.stages.two .stage .meta { order: 2; padding: 10px 0 2px; }
+.stages.two .stage .pic .tag { font-size: 14px; font-weight: 600; padding: 5px 12px; margin-bottom: 8px; }
+/* phones: the two results stack, so a line and extra space keep them clearly apart */
+@media (max-width: 820px) {
+  .stages.two { gap: 0; }
+  .stages.two .stage + .stage { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
+}

@@ -7,6 +7,8 @@
 const TEAM = ["Polok", "Zahid", "Rony", "Parvez"];
 
 const NAMES = { model1: "First version", model2: "Improved version" };
+// the label on each result picture: the model's real name, then which one it is
+const TAGS = { model1: "YOLOv8s (1st Model)", model2: "YOLO11s (Improved Model)" };
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const pct = v => (v * 100).toFixed(1);
@@ -114,8 +116,9 @@ drop.addEventListener("drop", e => {
 async function openExample(src) {
   const blob = await (await fetch(src)).blob();
   let track = null;
-  if (/\.mp4$/.test(src)) track = await fetch(src.replace(/\.mp4$/, ".json")).then(r => r.ok ? r.json() : null).catch(() => null);
-  openFile(new File([blob], src.split("/").pop(), { type: blob.type }), track && trackFromJson(track));
+  const path = src.split("?")[0];          // links carry ?v=N so browsers fetch new versions of the examples
+  if (/\.mp4$/.test(path)) track = await fetch(src.replace(/\.mp4(\?|$)/, ".json$1")).then(r => r.ok ? r.json() : null).catch(() => null);
+  openFile(new File([blob], path.split("/").pop(), { type: blob.type }), track && trackFromJson(track));
 }
 $$("#examples button").forEach(b => {
   b.draggable = true;
@@ -327,6 +330,7 @@ function clearStage() {
   state.results = null;
   state.focus = null;
   $("#diff").hidden = true;
+  $("#diff").style.minHeight = "";
   $("#stages").innerHTML = "";
   $("#stages").dataset.sig = "";
   drop.classList.remove("small");
@@ -334,7 +338,7 @@ function clearStage() {
 
 // one picture per model; in compare mode the two sit side by side (stacked on phones)
 const stageHTML = m => `<div class="stage${m === "model2" ? " best" : ""}" data-m="${m}">
-  <div class="pic"><canvas></canvas><span class="tag">${NAMES[m]}</span></div>
+  <div class="pic"><canvas></canvas><span class="tag">${TAGS[m]}</span></div>
   <div class="meta"><b></b><span></span></div><div class="counts"></div></div>`;
 
 function render(skipTable = false) {
@@ -345,12 +349,13 @@ function render(skipTable = false) {
     box.innerHTML = r.map(x => stageHTML(x.model)).join("");
     box.classList.toggle("two", two);
   }
+  box.classList.toggle("playing", !!play.track);   // video: keep each line's height steady, so nothing jumps
   if (!two || !r.some(x => x.boxes.some(b => b.name === state.focus))) state.focus = null;
   markNew(r);
   if (!skipTable) renderDiff(r);
   for (const x of r) {
     const el = box.querySelector(`[data-m="${x.model}"]`);
-    el.querySelector("b").textContent = NAMES[x.model];
+    el.querySelector("b").textContent = TAGS[x.model];
     const n = x.boxes.length;
     el.querySelector(".meta span").textContent = x.ms == null || play.track
       ? `${n} object${n === 1 ? "" : "s"} in this frame`
@@ -426,10 +431,12 @@ function renderDiff(r) {
   const n1 = m1.boxes.length, n2 = m2.boxes.length, d = n2 - n1;
   const missed = m2.boxes.filter(b => b.isNew).length;
   const sign = v => v > 0 ? "+" + v : v < 0 ? "\u2212" + -v : "0";
-  el.innerHTML = `<div class="big">${d > 0 ? `The improved version found ${d} more object${d === 1 ? "" : "s"}`
-      : d < 0 ? `The first version found ${-d} more object${d === -1 ? "" : "s"}` : "Both versions found the same number of objects"}</div>
-    <div class="sub">First version: ${n1} · Improved version: ${n2} · the ${missed} object${missed === 1 ? "" : "s"} the first version missed are marked with dashed boxes</div>
-    <table><tr><th>Object</th><th>First version</th><th>Improved version</th><th>Difference</th></tr>
+  const objs = k => `${k} object${k === 1 ? "" : "s"}`;
+  el.innerHTML = `<div class="vs">Model vs Model summary · <b>${TAGS.model1}</b> vs <b>${TAGS.model2}</b></div>
+    <div class="big">${d > 0 ? `YOLO11s found ${objs(d)} more than YOLOv8s`
+      : d < 0 ? `YOLOv8s found ${objs(-d)} more than YOLO11s` : "Both models found the same number of objects"}</div>
+    <div class="sub">YOLOv8s: ${n1} · YOLO11s: ${n2} · ${missed === 1 ? "the 1 object YOLOv8s missed is" : `the ${missed} objects YOLOv8s missed are`} marked with dashed boxes</div>
+    <table><tr><th>Object</th><th>${TAGS.model1}</th><th>${TAGS.model2}</th><th>Difference</th></tr>
     ${names.map(k => { const a = c1[k] || 0, b = c2[k] || 0;
       return `<tr data-name="${k}" tabindex="0" aria-pressed="${state.focus === k}"${state.focus === k ? ' class="sel"' : ""}>
         <td>${k}</td><td>${a}</td><td>${b}</td><td class="${b > a ? "up" : ""}">${sign(b - a)}</td></tr>`; }).join("")}
@@ -437,8 +444,10 @@ function renderDiff(r) {
     <div class="pick">${state.focus
       ? `Showing only <b>${state.focus}</b> on the picture. <button type="button" class="show-all">Show all objects</button>`
       : "Click a row to show only that kind of object on the picture."}</div>
-    <div class="key"><span><i class="solid"></i>found by both</span><span><i class="dash"></i>missed by the first version</span></div>`;
+    <div class="key"><span><i class="solid"></i>found by both</span><span><i class="dash"></i>missed by YOLOv8s (1st Model)</span></div>`;
   el.hidden = false;
+  // while a video plays the table gains and loses rows every moment: let the box only grow, never shrink
+  el.style.minHeight = play.track ? el.offsetHeight + "px" : "";
 }
 
 // click (or Enter on) a row of the comparison table: show only that kind of object; again: show all

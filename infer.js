@@ -7,7 +7,7 @@
  *   3. keep boxes whose best class score >= conf, undo the letterbox, then non-maximum suppression per class
  */
 (function () {
-  const CLASSES = ["Vehicle", "Bus", "Bicycle", "Person", "Engine", "Truck", "Tricycle",
+  const CLASSES = ["Vehicle", "Bus", "Bicycle", "Person", "Motorbike", "Truck", "Tricycle",
                    "Obstacle", "Pothole", "Traffic Light", "Traffic Sign"];
   // models/parts.json lists each model's file(s): one .onnx file on GitHub Pages, or a few base64 .txt
   // parts on claude.ai (which serves no raw binary files)
