@@ -1,4 +1,4 @@
-# Object Detection · AI Lab Project
+# Autonomous Vehicle Object Detection (AI LAB)
 
 Traffic object detection on the [Traffic-Object](https://www.kaggle.com/datasets/tailength/traffic-object) dataset (11 classes).
 Two models are compared on the same 3,691 test photos:

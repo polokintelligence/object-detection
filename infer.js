@@ -27,20 +27,65 @@
   ort.env.wasm.wasmPaths = new URL("ort/", document.baseURI).href;
   ort.env.wasm.numThreads = 1;   // threads need special server headers; one thread works everywhere
 
+  // Engine: the graphics card (WebGPU, Chrome / Edge) when this page has the WebGPU build and the GPU
+  // works, about 10x faster; otherwise the CPU, in a background worker so the page never freezes.
+  const backend = (async () => {
+    try {
+      if (!ort.env.webgpu || !navigator.gpu) return "wasm";
+      const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+      if (!adapter || !adapter.features.has("shader-f16")) return "wasm";   // the models are fp16
+      return "webgpu";
+    } catch { return "wasm"; }
+  })().then(b => { if (b === "wasm") ort.env.wasm.proxy = true; return b; });
+
+  // download progress, for the progress bar: bytes received / bytes expected, over every model started
+  const got = {}, expected = {}, listeners = [];
+  const report = () => {
+    const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
+    listeners.forEach(f => f(sum(got), sum(expected)));
+  };
+  async function download(path) {
+    const r = await fetch(path);
+    if (!r.ok) throw new Error(`could not download ${path} (${r.status})`);
+    const reader = r.body.getReader(), chunks = [];
+    let n = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); n += value.length;
+      got[path] = n; report();
+    }
+    const bytes = new Uint8Array(n);
+    let at = 0;
+    for (const c of chunks) { bytes.set(c, at); at += c.length; }
+    return path.endsWith(".txt") ? fromBase64(new TextDecoder().decode(bytes)) : bytes;
+  }
+
+  // the engine runs one job at a time (two models working at once fail on the GPU): queue every job
+  let queue = Promise.resolve();
+  const serial = job => { const p = queue.then(job); queue = p.catch(() => {}); return p; };
+
   const sessions = {};
   function load(key) {
     if (!sessions[key]) {
       sessions[key] = (async () => {
-        const parts = (await getParts())[key];
-        const bufs = await Promise.all(parts.map(async p => {
-          const r = await fetch(p);
-          if (!r.ok) throw new Error(`could not download ${p} (${r.status})`);
-          return p.endsWith(".txt") ? fromBase64(await r.text()) : new Uint8Array(await r.arrayBuffer());
-        }));
+        const info = (await getParts())[key];
+        expected[key] = info.size; report();
+        const bufs = await Promise.all(info.files.map(download));
         const all = new Uint8Array(bufs.reduce((n, b) => n + b.length, 0));
         let at = 0;
         for (const b of bufs) { all.set(b, at); at += b.length; }
-        return ort.InferenceSession.create(all, { executionProviders: ["wasm"] });
+        const b = await backend, S = SPEC[key].size;
+        return serial(async () => {
+          if (b === "webgpu") {
+            try {
+              const s = await ort.InferenceSession.create(all, { executionProviders: ["webgpu"], graphOptimizationLevel: "all" });
+              await s.run({ [s.inputNames[0]]: new ort.Tensor("float32", new Float32Array(3 * S * S), [1, 3, S, S]) });  // warm-up: compiles the GPU programs once
+              return s;
+            } catch (e) { console.warn("WebGPU failed, using the CPU instead", e); }
+          }
+          return ort.InferenceSession.create(all, { executionProviders: ["wasm"] });
+        });
       })();
       sessions[key].catch(() => delete sessions[key]);  // allow a retry after a failed download
     }
@@ -75,7 +120,7 @@
     const s = await load(key), S = SPEC[key].size;
     const t0 = performance.now();
     const lb = letterbox(frame, S);
-    const out = (await s.run({ [s.inputNames[0]]: lb.tensor }))[s.outputNames[0]];
+    const out = (await serial(() => s.run({ [s.inputNames[0]]: lb.tensor })))[s.outputNames[0]];
     const N = out.dims[2], o = out.data, W = frame.width, H = frame.height;
     const cand = [];
     for (let i = 0; i < N; i++) {
@@ -105,7 +150,9 @@
 
   window.RSInfer = {
     loaded: key => !!sessions[key],
+    backend,                              // Promise: "webgpu" (graphics card) or "wasm" (CPU)
     load,
+    onProgress: f => listeners.push(f),   // f(bytesReceived, bytesExpected)
     async detect(frame, keys, conf) {
       const results = [];
       for (const k of keys) results.push(await runOne(k, frame, conf));  // one at a time: less memory

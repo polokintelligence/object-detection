@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Object Detection · AI Lab Project</title>
+<title>Autonomous Vehicle Object Detection (AI LAB)</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<script>/* theme before first paint, so the page never flashes the wrong colours */
+  try { if (localStorage.getItem("theme") === "light") document.documentElement.dataset.theme = "light"; } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -11,13 +14,33 @@
 </head>
 <body>
 <header>
-  <h1>Object Detection</h1>
-  <p class="lead">A self-driving car has to see what is on the road. This project trains two AI models to find
-    vehicles, people, bicycles, traffic lights, signs, potholes and other obstacles in road photos.
-    Try them below, then see which model did better and why.</p>
+  <div class="topbar"><button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch light or dark theme"></button></div>
+  <h1><img class="logo" src="logo.jpg" alt="" width="96" height="56">Autonomous Vehicle Object Detection <span class="tag">(AI LAB)</span></h1>
+  <p class="tagline">Two YOLO models find vehicles, people, signs and road hazards in your photos, and you can compare them side by side right in the browser.</p>
+  <dl class="credits">
+    <div>
+      <dt>Submitted to</dt>
+      <dd><b>Mohammad Nasif Sadique Khan</b><br>Lecturer, Dept. of CSE<br>Northern University Bangladesh</dd>
+    </div>
+    <div>
+      <dt>Submitted by</dt>
+      <dd class="team">
+        <span><b>Polok</b> ID: [ID]</span>
+        <span><b>Zahid</b> ID: [ID]</span>
+        <span><b>Rony</b> ID: [ID]</span>
+        <span><b>Parvez</b> ID: [ID]</span>
+      </dd>
+    </div>
+    <div>
+      <dt>Course</dt>
+      <dd><b>CSE 4385</b><br>Artificial Intelligence &amp; Expert System Lab Works</dd>
+    </div>
+  </dl>
+  <p class="lead">A self-driving car has to see what is on the road: 11 kinds of objects, from buses and
+    bicycles to potholes and traffic lights. Try both models below, then see which one did better and why.</p>
   <figure class="sample" id="sample">
     <video src="sample.mp4" autoplay muted loop playsinline preload="auto"></video>
-    <figcaption>Sample: the improved version marking every object it finds in road footage.</figcaption>
+    <figcaption>Sample: the improved version marking every object it finds, from morning to night (footage: Pexels).</figcaption>
   </figure>
 </header>
 
@@ -46,11 +69,26 @@
       <span>Drag a road photo or video here, or <u>click to choose one</u></span>
     </label>
     <div class="examples" id="examples">
-      <span>No photo? Try one of ours:</span>
-      <button data-src="examples/road01.jpg"><img src="examples/road01.jpg" alt="Road photo 1"></button>
-      <button data-src="examples/road05.jpg"><img src="examples/road05.jpg" alt="Road photo 2"></button>
-      <button data-src="examples/road11.jpg"><img src="examples/road11.jpg" alt="Road photo 3"></button>
-      <button data-src="examples/road14.jpg"><img src="examples/road14.jpg" alt="Road photo 4"></button>
+      <p class="ex-title">No photo? Try one of ours, from sunrise to night:</p>
+      <div class="ex-row">
+        <span class="ex-kind">Photos</span>
+        <button data-src="examples/photo_morning.jpg"><img src="examples/photo_morning.jpg" alt=""><em>Morning</em></button>
+        <button data-src="examples/photo_dawn.jpg"><img src="examples/photo_dawn.jpg" alt=""><em>Dawn</em></button>
+        <button data-src="examples/photo_dusk.jpg"><img src="examples/photo_dusk.jpg" alt=""><em>Dusk</em></button>
+        <button data-src="examples/photo_night.jpg"><img src="examples/photo_night.jpg" alt=""><em>Night</em></button>
+      </div>
+      <div class="ex-row">
+        <span class="ex-kind">Videos</span>
+        <button class="vid" data-src="examples/video_morning.mp4"><img src="examples/video_morning.jpg" alt=""><em>Morning</em></button>
+        <button class="vid" data-src="examples/video_dawn.mp4"><img src="examples/video_dawn.jpg" alt=""><em>Dawn</em></button>
+        <button class="vid" data-src="examples/video_dusk.mp4"><img src="examples/video_dusk.jpg" alt=""><em>Dusk</em></button>
+        <button class="vid" data-src="examples/video_night.mp4"><img src="examples/video_night.jpg" alt=""><em>Night</em></button>
+      </div>
+      <p class="ex-credit">Example photos and videos: free stock footage from Pexels.</p>
+    </div>
+    <div class="progress" id="progress" hidden>
+      <div class="bar"><i></i></div>
+      <span role="status"></span>
     </div>
     <p class="note" id="note"></p>
     <div class="stages" id="stages"></div>
@@ -68,19 +106,15 @@
       <p class="muted">Both models were tested on the same set of 3,691 road photos that they never saw during training.</p>
       <div class="headline" id="headline"></div>
 
-      <h3>How well each model finds each kind of object</h3>
-      <div class="chart tall"><canvas id="c-class"></canvas></div>
+      <h3><span class="num">01</span>The two models</h3>
+      <div class="models" id="models"></div>
 
-      <h3>What we changed to make the improved version</h3>
-      <table id="changes"></table>
-
-      <h3>Why rare objects were hard</h3>
-      <p class="muted">The training photos have 166,390 vehicles but only 518 traffic lights, so the first version
-        hardly learned the rare objects. The improved version shows the photos with rare objects more often.</p>
-      <div class="chart"><canvas id="c-rfs"></canvas></div>
-
-      <h3>How accuracy grew during training</h3>
-      <div class="chart"><canvas id="c-epoch"></canvas></div>
+      <h3><span class="num">02</span>Analysis</h3>
+      <div class="seg small" id="an-seg">
+        <button data-v="class" class="on">Per-class accuracy</button><button data-v="rfs">Class imbalance</button><button data-v="epoch">Training curve</button>
+      </div>
+      <p class="finding" id="finding"></p>
+      <div class="chart" id="an-chart"><canvas id="c-an"></canvas></div>
 
       <details>
         <summary>Technical details</summary>
@@ -95,7 +129,7 @@
 </main>
 
 <footer id="footer"></footer>
-<script src="ort/ort.wasm.min.js"></script>
+<script src="ort/ort.webgpu.min.js"></script>
 <script src="infer.js"></script>
 <script src="app.js"></script>
 </body>

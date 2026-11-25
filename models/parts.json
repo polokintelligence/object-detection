@@ -1,1 +1,1 @@
-{"model1": ["models/model1.onnx"], "model2": ["models/model2.onnx"]}
+{"model1": {"files": ["models/model1.onnx"], "size": 22404804}, "model2": {"files": ["models/model2.onnx"], "size": 19053012}}
