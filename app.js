@@ -218,6 +218,9 @@ async function detect() {
   } finally {
     state.busy = false;
     $$(".stage").forEach(s => s.classList.remove("busy"));
+    // a newer picture was opened while this one was being checked (e.g. while the models were loading):
+    // it was waiting for us, so check it now instead of leaving it unchecked
+    if (gen !== state.gen && state.frame && !play.track && !play.analyzing) detect();
   }
 }
 
